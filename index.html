@@ -537,7 +537,7 @@ function angleAt(a, b, c) {
   if (!d) return 180;
   return Math.acos(clamp((v1x * v2x + v1y * v2y) / d, -1, 1)) / DEG;
 }
-const VIS = 0.6;
+const VIS = 0.5; // demo: slightly lenient visibility during the exercise
 function computeMetrics(f, ex, side) {
   const S = IDX[side], O = IDX[otherSide(side)];
   if (![S.sh, S.hip, S.knee, S.ankle].every(i => f[i].v >= VIS)) return { visible: false };
@@ -1281,27 +1281,37 @@ function goSetup() {
   $('autogo').textContent = '';
   if (app.demoMode) startSim(); else startCamera();
 }
+// Demo-friendly setup checks: lenient thresholds, and a check that has been green
+// for 0.3 s stays green for the rest of the setup (no flicker back to grey).
+const SETUP_VIS = 0.35;
 function setupTick(dt) {
   const f = source.frame, S = IDX[app.side];
   let leg = false, side = false;
   if (f) {
-    leg = [S.hip, S.knee, S.ankle, S.heel].every(i => f[i].v >= VIS && f[i].nx > 0.01 && f[i].nx < 0.99 && f[i].ny > 0.01 && f[i].ny < 0.99);
+    const inFrame = i => f[i].nx > -0.05 && f[i].nx < 1.05 && f[i].ny > -0.05 && f[i].ny < 1.05;
+    leg = [S.hip, S.knee, S.ankle].every(i => f[i].v >= SETUP_VIS && inFrame(i));
     const shw = Math.hypot(f[11].x - f[12].x, f[11].y - f[12].y);
     const msx = (f[11].x + f[12].x) / 2, msy = (f[11].y + f[12].y) / 2, mhx = (f[23].x + f[24].x) / 2, mhy = (f[23].y + f[24].y) / 2;
     const torso = Math.hypot(msx - mhx, msy - mhy);
-    side = torso > 10 && shw / torso < 0.38;
+    // roughly sideways is enough: shoulder width under ~65 % of torso length
+    side = torso > 5 && shw / torso < 0.65;
   }
-  const light = cam.lum != null && cam.lum > 0.22;
-  const upd = (k, ok) => { checks[k] = ok ? Math.min(1, checks[k] + dt * 2) : Math.max(0, checks[k] - dt * 3); $('chk-' + k).classList.toggle('ok', checks[k] >= 1); };
+  const light = cam.lum == null ? !!f : cam.lum > 0.12;
+  const upd = (k, ok) => {
+    if (checks[k] >= 1) return;                       // latched
+    checks[k] = ok ? Math.min(1, checks[k] + dt / 0.3) : Math.max(0, checks[k] - dt);
+    $('chk-' + k).classList.toggle('ok', checks[k] >= 1);
+  };
   upd('leg', leg); upd('light', light); upd('side', side);
-  const all = checks.leg >= 1 && checks.light >= 1 && checks.side >= 1;
-  $('btn-continue').disabled = !all;
-  if (source.kind === 'camera' && cam.landmarker && cam.stream) setCamStatus(f ? (all ? '' : 'Säädä asentoa, kunnes kaikki kohdat ovat vihreitä.') : 'Etsitään sinua kuvasta…');
+  const greens = ['leg', 'light', 'side'].filter(k => checks[k] >= 1).length;
+  const all = greens === 3;
+  $('btn-continue').disabled = greens < 2;          // manual start once 2 of 3 are green
+  if (source.kind === 'camera' && cam.landmarker && cam.stream) setCamStatus(f ? (all ? '' : greens >= 2 ? 'Melkein valmis. Voit myös painaa Jatka.' : 'Säädä asentoa, kunnes kohdat muuttuvat vihreiksi.') : 'Etsitään sinua kuvasta…');
   if (all) {
     allOkT += dt;
-    const left = Math.ceil(2.5 - allOkT);
+    const left = Math.ceil(1.5 - allOkT);
     $('autogo').textContent = left > 0 ? `Kaikki kunnossa. Jatketaan ${left}…` : '';
-    if (allOkT >= 2.5) onContinue();
+    if (allOkT >= 1.5) onContinue();
   } else { allOkT = 0; $('autogo').textContent = ''; }
 }
 function onContinue() {
