@@ -1396,7 +1396,7 @@ function introTick(dt) {
     if (r.wait <= 0) { r.idx++; r.wait = 0.55; if (r.idx >= r.kf.length) { introRun = null; showYourTurn(); return; } }
   }
   paintRing(Math.max(0, r.idx - (Math.abs(avatar.cur - avatar.goal) < 0.6 ? 0 : 1)), r.idx, 'idle');
-  $('kf-chip').textContent = `Vaihe ${Math.max(1, r.idx)}/${r.kf.length - 1}`;
+  $('kf-chip').textContent = `Step ${Math.max(1, r.idx)}/${r.kf.length - 1}`;
   const m = source.metrics;
   paintGauge(m && m.visible ? m.primary : null, avatar.cur, 'idle');
 }
@@ -1432,7 +1432,7 @@ function exerciseTick(dt) {
   setCue(app.paused ? 'Paused' : e.cue, app.paused ? 'idle' : st);
   if (!cueSpoken && now() - cueSince > 350 && e.cue !== 'Good, keep going' && !app.paused) cueSpoken = voice.speak(e.cue);
   paintRing(e.ringFilled(), Math.max(0, e.idx - 1), st);
-  $('kf-chip').textContent = `Vaihe ${Math.max(1, e.idx)}/${e.kf.length - 1}`;
+  $('kf-chip').textContent = `Step ${Math.max(1, e.idx)}/${e.kf.length - 1}`;
   paintGauge(m && m.visible ? m.primary : null, e.target(), st);
   if (e.done && !e.finishing) { e.finishing = true; setTimeout(() => finishExercise(false), 1600); }
 }
